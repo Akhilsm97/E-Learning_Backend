@@ -1,11 +1,14 @@
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from .models import *
 from rest_framework import generics, status
 from .serializers import *
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import Sum
+import stripe
+from django.conf import settings
 # Create your views here.
 
 # Admin Portion
@@ -67,6 +70,15 @@ class StudentLoginView(generics.ListAPIView):
 class StudentDetail(generics.RetrieveAPIView):
     queryset = stud_reg.objects.all()
     serializer_class = stud_regSerializer
+    
+class StudentDetails(generics.RetrieveAPIView):
+    queryset = stud_reg.objects.all()
+    serializer_class = stud_regSerializer
+    lookup_field = 'username'  # Specify the lookup field
+
+    def get_queryset(self):
+        name = self.kwargs.get('username')
+        return self.queryset.filter(username__icontains=name)
 
 
 class StudentUpdateView(generics.RetrieveUpdateAPIView):
@@ -80,6 +92,26 @@ class StudentDelete(generics.DestroyAPIView):
 
 
 
+    #Faculty 
+    
+class Faculty_reg(generics.ListCreateAPIView):
+    queryset = faculty_reg.objects.all()
+    serializer_class = FacultySerializer
+    permission_classes = [AllowAny]    
+
+class FacultyDetail(generics.RetrieveAPIView):
+    queryset = faculty_reg.objects.all()
+    serializer_class = FacultySerializer
+
+
+class FacultyUpdateView(generics.RetrieveUpdateAPIView):
+    queryset = faculty_reg.objects.all()
+    serializer_class = FacultySerializer
+
+
+class FacultyDelete(generics.DestroyAPIView):
+    queryset = faculty_reg.objects.all()
+    serializer_class = FacultySerializer
 
 
                         #Course Portion Starts Here
@@ -142,6 +174,14 @@ class CourseNameListView(APIView):
         serializer = CourseNameSerializer(courses, many=True)
         return Response(serializer.data)
     
+class CourseModuleListAPIView(generics.ListAPIView):
+    serializer_class = Course_TopicSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        module_id = self.kwargs['module_id']
+        return Course_Topic.objects.filter(course_enrollment_id=course_enrollment_id, module=module_id)  
+    
 class Course_TopicUpdateView(generics.RetrieveUpdateAPIView):
     queryset = Course_Topic.objects.all()
     serializer_class = Course_TopicSerializer
@@ -185,6 +225,29 @@ class Assessment_Create(generics.ListCreateAPIView):
 class AssessmentDetail(generics.RetrieveAPIView):
     queryset = Assessment_add.objects.all()
     serializer_class = Assessment_addSerializer
+    
+    
+class AssessmentQDetail(generics.ListCreateAPIView):
+    serializer_class = AssessmentSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        return Assessment.objects.filter(course_enrollment_id=course_enrollment_id) 
+    
+class AssessmentQuestionDetail(generics.ListCreateAPIView):
+    serializer_class = Assessment_addSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        return Assessment_add.objects.filter(course_enrollment_id=course_enrollment_id)     
+    
+class AssessmentQuestListAPIView(generics.ListAPIView):
+    serializer_class = Assessment_addSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        module_id = self.kwargs['module_id']
+        return Assessment_add.objects.filter(course_enrollment_id=course_enrollment_id, module=module_id)          
 
 
 class AssessmentUpdateView(generics.RetrieveUpdateAPIView):
@@ -196,6 +259,17 @@ class AssessmentDelete(generics.DestroyAPIView):
     queryset = Assessment_add.objects.all()
     serializer_class = Assessment_addSerializer
 
+
+class AssessmentView(generics.ListCreateAPIView):
+    queryset = Assessment.objects.all()
+    serializer_class = AssessmentSerializer
+    permission_classes = [AllowAny]
+
+class AssessmentQView(generics.ListCreateAPIView):
+    queryset = Assessment.objects.all()
+    serializer_class = AssessmentSerializer
+    permission_classes = [AllowAny]    
+    
 #Monitoring 
     
 class Monitoring_Assesment(generics.ListCreateAPIView):
@@ -222,6 +296,9 @@ class Course_purchased(generics.ListCreateAPIView):
     queryset = course_purchased.objects.all()
     serializer_class = course_purchasedSerializer
     permission_classes = [AllowAny]  
+    
+    
+    # ------------------------------------------------------------Counts------------------------------------------------------------------
 
 class TotalCountView(APIView):
     def get(self, request):
@@ -246,3 +323,118 @@ class CourseMaterialsCountAPIView(APIView):
         ]
 
         return Response(counts_list)   
+    
+    
+class QuestCountListAPIView(generics.GenericAPIView):
+    serializer_class = Assessment_addSerializer
+
+    def get(self, request, *args, **kwargs):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        module_id = self.kwargs['module_id']
+        
+        question_count = Assessment_add.objects.filter(course_enrollment_id=course_enrollment_id, module=module_id).count()
+        
+        return Response({'Q_count': question_count})    
+    
+    
+class CourseQuestionCountAPIView(APIView):
+    def get(self, request):
+        # Get the count for each type based on course_enrollment_id and module
+        counts = Assessment_add.objects.values('course_enrollment_id', 'module').annotate(total_count=models.Count('id'))
+        
+        # Convert queryset to list of dictionaries
+        counts_list = [
+            {
+                'course_enrollment_id': item['course_enrollment_id'],
+                'module': item['module'],
+                'total_count': item['total_count']
+            } for item in counts
+        ]
+
+        return Response(counts_list)   
+    
+    
+class CartDataView(generics.ListCreateAPIView):
+    queryset = CartData.objects.all()
+    serializer_class = CartDataSerializer
+    permission_classes = [AllowAny]     
+    
+class CartDetail(generics.RetrieveAPIView):
+    queryset = CartData.objects.all()
+    serializer_class = CartDataSerializer 
+
+class CartDetailView(generics.RetrieveAPIView):
+    queryset = CartData.objects.all()
+    serializer_class = CartDataSerializer   
+    
+class CartDetail(generics.ListCreateAPIView):
+    serializer_class = CartDataSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['stud_reg']
+        return CartData.objects.filter(stud_reg=course_enrollment_id)      
+    
+    
+
+class CartCountView(generics.GenericAPIView):
+    serializer_class = CartDataSerializer
+
+    def get(self, request, *args, **kwargs):
+        course_enrollment_id = self.kwargs['stud_reg']
+
+        cart_count = CartData.objects.filter(stud_reg=course_enrollment_id).count()
+        
+        return Response({'C_count': cart_count})  
+    
+class CartTotalView(generics.GenericAPIView):
+    serializer_class = CartDataSerializer
+
+    def get(self, request, *args, **kwargs):
+        course_enrollment_id = self.kwargs['stud_reg']
+
+        cart_pieces = CartData.objects.filter(stud_reg=course_enrollment_id).aggregate(total_pieces=Sum('price'))
+        total_pieces = cart_pieces['total_pieces'] if cart_pieces['total_pieces'] else 0
+        
+        return Response({'total_pieces': total_pieces})    
+    
+class CartDelete(generics.DestroyAPIView):
+    queryset = CartData.objects.all()
+    serializer_class = CartDataSerializer    
+    
+API_URL = "http/locahost:8000"
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+class CreateCheckOutSession(APIView):
+    def post(self, request, *args, **kwargs):
+        prod_id = self.kwargs["pk"]  # Accessing pk from kwargs
+        try:
+            product = CartData.objects.get(id=prod_id)
+            product.payment_status = 'Success'
+            product.save()
+            total_price = CartData.objects.filter(id=prod_id).aggregate(total_price=Sum('price'))['total_price']
+            checkout_session = stripe.checkout.Session.create(
+    line_items=[
+        {
+            'price_data': {
+                'currency': 'INR',
+                'unit_amount': int(total_price) * 100,
+                'product_data': {
+                    'name': 'Your Product Name',
+                    'description': 'Student Name: ' + product.stud_name +    '\n Course Name: ' + product.course_name,
+                    'images': [  product.course_img
+                                ]
+                }
+            },
+            'quantity': 1,
+        },
+    ],
+    metadata={
+        "product_id": product.id,
+    },
+    mode='payment',
+    success_url=settings.SITE_URL + 'success' + '/' + 'product.course_name',
+    cancel_url=settings.SITE_URL + '?canceled=true',
+)
+            return redirect(checkout_session.url)
+        except Exception as e:
+            return Response({'msg': 'something went wrong while creating stripe session', 'error': str(e)}, status=500)

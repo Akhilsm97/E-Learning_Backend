@@ -7,3 +7,8 @@ admin.site.register(Course)
 admin.site.register(Course_Topic)
 admin.site.register(Login)
 admin.site.register(Course_Materials)
+admin.site.register(Assessment_add)
+admin.site.register(Assessment)
+admin.site.register(faculty_reg)
+admin.site.register(CartData)
+

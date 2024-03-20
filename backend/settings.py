@@ -130,6 +130,16 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'assets')
 MEDIA_ROOT =  os.path.join(BASE_DIR, 'media/')
 MEDIA_URL = '/media/'
 
+APPEND_SLASH=False
+
+
+STRIPE_PUBLIC_KEY="pk_test_51OCabMSGMiQ0wxdnC13h4OaoFqEXOKZCLh1G1QLBU1KKMv8ZGr8r1LtjnO6ilTwwETgB6aHIRBUBoTMv6BQWIcU3005me1B0G8"
+STRIPE_SECRET_KEY="sk_test_51OCabMSGMiQ0wxdnrkSt06x4IQvmaiGgE6Ll7eZNhbnKvbnfLp97M6RbeKmozHKAj3pETjG4xapb681wAOAjFZNC00avh5HeNW"
+
+STRIPE_SECRET_WEBHOOK="whsec_mwXBR7ZwLZe5XTFPlDekNrQeFaqrXkNj"
+
+SITE_URL='http://localhost:3000/'
+
 
 
 # Default primary key field type

@@ -105,6 +105,17 @@ class Course_Materials(models.Model):
     created_at = models.DateField()
     video_url = models.URLField()
     pdf = models.FileField(upload_to='pdf/')
+    
+
+class Assessment(models.Model):
+    course_enrollment_id =  models.ForeignKey(Course, on_delete=models.CASCADE)
+    module = models.ForeignKey(Course_Topic, on_delete=models.CASCADE)
+    exam_level = models.CharField(max_length=100)
+    total_question = models.IntegerField()
+    total_points = models.IntegerField()
+    pass_mark = models.IntegerField()
+    
+        
 
 
 
@@ -122,15 +133,35 @@ class Assessment_add(models.Model):
     course_enrollment_id = models.ForeignKey(Course, on_delete=models.CASCADE)
     module = models.ForeignKey(Course_Topic, on_delete = models.CASCADE)
     assessment_name = models.CharField(max_length=50)
-    description = models.CharField(max_length=50)
-    due_date = models.DateField()
-    total_points = models.CharField(max_length=50)
-    weight = models.CharField(max_length=50)
+    question  = models.CharField(max_length = 5000)
+    option_1 = models.CharField(max_length=5000)
+    option_2 = models.CharField(max_length=5000)
+    option_3 = models.CharField(max_length=5000)
+    option_4 = models.CharField(max_length=5000)
+    correct_answer = models.CharField(max_length=5000)
     status = models.CharField(max_length=50, choices= ASSESSMENT_STATUS_CHOICES)
     submission_method = models.CharField(max_length=50, choices=ASSESSMENT_STATUS_SUBBMISIION)
+    question_no = models.IntegerField()
 
     def __str__(self):
         return self.assessment_name
+    
+class CartData(models.Model):
+    COURSE_STATUS_CHOICES = [
+        ('Active', 'Active'),
+        ('Inactive', 'Inactive'),
+    ]
+    course_enrollment_id =  models.ForeignKey(Course, on_delete=models.CASCADE)
+    stud_reg = models.ForeignKey('stud_reg', on_delete=models.CASCADE)
+    stud_name = models.CharField(max_length=50)
+    course_name = models.CharField(max_length=50)
+    price = models.IntegerField()
+    status = models.CharField(max_length=100, choices=COURSE_STATUS_CHOICES)
+    created_at = models.DateField()
+    course_img = models.URLField()
+    
+    
+    
     
 
 class Monitoring(models.Model):
@@ -151,4 +182,26 @@ class course_purchased(models.Model):
 
     def __str__(self):
         return f"{self.stud_name} - {self.course_name}"
+    
+class faculty_reg(models.Model):
+    
+    faculty_name  = models.CharField(max_length = 200)
+    gender_choices=[
+        ('Male','Male'),
+        ("Female",'Female'),
+    ]
+    gender  = models.CharField(choices=gender_choices, max_length = 200)
+    email  = models.CharField(max_length = 200)
+    phone  = models.CharField(max_length = 200)
+    Address_line_1  = models.CharField(max_length = 200)
+    Address_line_2  = models.CharField(max_length = 200)
+    qualification = models.CharField(max_length = 200)
+    department = models.CharField(max_length = 200)
+    username  = models.CharField(max_length = 200)
+    password = models.CharField(max_length = 200)
+    faculty_img=models.ImageField(upload_to='faculty/')
+    reg_date = models.DateField()
+
+    def __str__(self):
+        return self.faculty_name  
 

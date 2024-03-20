@@ -17,6 +17,14 @@ class stud_regSerializer(serializers.ModelSerializer):
         model = stud_reg
         fields = '__all__'
 
+class FacultySerializer(serializers.ModelSerializer):
+    faculty_img = serializers.ImageField(required=False)
+    reg_date = serializers.DateField(required=False)
+    class Meta:
+        model = faculty_reg
+        fields = '__all__'        
+        
+
 class StudentLoginSerializer(serializers.ModelSerializer):
     class Meta:
         model = Login
@@ -47,12 +55,22 @@ class Course_MaterialsSerializer(serializers.ModelSerializer):
         model = Course_Materials
         fields = '__all__'
 
-        
+class AssessmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Assessment
+        fields = '__all__'           
 
 class Assessment_addSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assessment_add
         fields = '__all__'    
+        
+        
+class CartDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CartData
+        fields = '__all__'  
+        
 
 class MonitoringSerializer(serializers.ModelSerializer):
     class Meta:
