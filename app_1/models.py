@@ -103,8 +103,11 @@ class Course_Materials(models.Model):
     type = models.CharField(max_length=100)
     Thumbnail = models.FileField(upload_to='thumbnail/')
     created_at = models.DateField()
-    video_url = models.URLField()
-    pdf = models.FileField(upload_to='pdf/')
+    video_url = models.URLField(blank=True)
+    pdf = models.FileField(upload_to='pdf/', blank=True)
+    
+    def __str__(self):
+        return self.video_title + '---> ' + str(self.course_enrollment_id)
     
 
 class Assessment(models.Model):
@@ -159,8 +162,28 @@ class CartData(models.Model):
     status = models.CharField(max_length=100, choices=COURSE_STATUS_CHOICES)
     created_at = models.DateField()
     course_img = models.URLField()
+    username  = models.CharField(max_length = 200)
+    def __str__(self) :
+        return self.stud_name +' - '+ self.course_name
+
+class WishList(models.Model):
+    COURSE_STATUS_CHOICES = [
+        ('Active', 'Active'),
+        ('Inactive', 'Inactive'),
+    ]
+    course_enrollment_id =  models.ForeignKey(Course, on_delete=models.CASCADE)
+    stud_reg = models.ForeignKey('stud_reg', on_delete=models.CASCADE)
+    stud_name = models.CharField(max_length=50)
+    course_name = models.CharField(max_length=50)
+    price = models.IntegerField()
+    status = models.CharField(max_length=100, choices=COURSE_STATUS_CHOICES)
+    created_at = models.DateField()
+    course_img = models.URLField()
+    wishlist_status = models.IntegerField()
     
-    
+    def __str__(self) :
+        return self.stud_name +' - '+ self.course_name
+        
     
     
 
@@ -204,4 +227,36 @@ class faculty_reg(models.Model):
 
     def __str__(self):
         return self.faculty_name  
+    
+class FacultyLogin(models.Model):
+    username = models.CharField(max_length=200)
+    password = models.CharField(max_length=200)      
+    
 
+class completedVideos(models.Model):
+    video_id = models.ForeignKey(Course_Materials, on_delete=models.CASCADE)
+    stud_id = models.ForeignKey(stud_reg, on_delete=models.CASCADE)
+    course_enrollment_id = models.ForeignKey(Course, on_delete=models.CASCADE)
+    module = models.ForeignKey(Course_Topic, on_delete = models.CASCADE)
+    status = models.IntegerField()
+    username = models.CharField(max_length = 200)
+
+class FinalScore(models.Model):
+    stud_id = models.ForeignKey(stud_reg, on_delete=models.CASCADE)
+    course_enrollment_id = models.ForeignKey(Course, on_delete=models.CASCADE)
+    module = models.ForeignKey(Course_Topic, on_delete = models.CASCADE)
+    correct_answer = models.IntegerField()
+    wrong_answer = models.IntegerField()
+    unattend = models.IntegerField()
+    final_score = models.IntegerField()
+    status = models.IntegerField()
+    username = models.CharField(max_length = 200)
+    asess_date = models.DateField()
+    percent = models.IntegerField()
+    
+    
+class Notify(models.Model):
+    content  = models.CharField(max_length = 1000)
+    created_at = models.DateField()    
+    
+    

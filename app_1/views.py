@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from django.db.models import Sum
 import stripe
 from django.conf import settings
+from datetime import datetime
 # Create your views here.
 
 # Admin Portion
@@ -112,7 +113,25 @@ class FacultyUpdateView(generics.RetrieveUpdateAPIView):
 class FacultyDelete(generics.DestroyAPIView):
     queryset = faculty_reg.objects.all()
     serializer_class = FacultySerializer
+    
+    
+class FacultyLoginView(generics.ListAPIView):
+    queryset = faculty_reg.objects.all()
+    serializer_class = FacultyLoginSerializer
 
+    def post(self, request, *args, **kwargs):
+        username = request.data.get('username', '')  # Use request.data for POST requests
+        password = request.data.get('password', '')
+
+        users = faculty_reg.objects.filter(username=username, password=password)
+        print(users)
+
+        if users.exists():
+            user = users.first()  # Retrieve the first user from the queryset
+            serializer = self.serializer_class(user)  # Use the serializer class directly
+            return Response({'message': 'Login Successful', 'data': serializer.data}, status=status.HTTP_200_OK)
+        else:
+            return Response({'error': 'Invalid username or password'}, status=status.HTTP_400_BAD_REQUEST)
 
                         #Course Portion Starts Here
 
@@ -128,6 +147,14 @@ class CourseCreate(generics.ListCreateAPIView):
 class CourseDetail(generics.RetrieveAPIView):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
+    
+class Course_PerDetails(generics.ListAPIView):
+    serializer_class = CourseSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs.get('course_enrollment_id')
+        queryset = Course.objects.filter(course_enrollment_id=course_enrollment_id)
+        return queryset    
 
 
 class CourseUpdateView(generics.RetrieveUpdateAPIView):
@@ -204,6 +231,16 @@ class CourseMaterialsListAPIView(generics.ListAPIView):
         course_enrollment_id = self.kwargs['course_enrollment_id']
         module_id = self.kwargs['module_id']
         return Course_Materials.objects.filter(course_enrollment_id=course_enrollment_id, module=module_id)     
+    
+class CourseMaterialsVideoListAPIView(generics.ListAPIView):
+    serializer_class = Course_MaterialsSerializer
+
+    def get_queryset(self):
+        id = self.kwargs['id']
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        module_id = self.kwargs['module_id']
+        return Course_Materials.objects.filter(course_enrollment_id=course_enrollment_id, module=module_id, id=id)       
+    
            
 class MaterialsDetail(generics.RetrieveAPIView):
     queryset = Course_Materials.objects.all()
@@ -213,6 +250,11 @@ class MaterialsDetail(generics.RetrieveAPIView):
 class MaterialUpdateView(generics.RetrieveUpdateAPIView):
     queryset = Course_Materials.objects.all()
     serializer_class = Course_MaterialsSerializer
+    
+
+class MaterialDelete(generics.DestroyAPIView):
+    queryset = Course_Materials.objects.all()
+    serializer_class =Course_MaterialsSerializer
        
         #Assessment
 
@@ -249,6 +291,14 @@ class AssessmentQuestListAPIView(generics.ListAPIView):
         module_id = self.kwargs['module_id']
         return Assessment_add.objects.filter(course_enrollment_id=course_enrollment_id, module=module_id)          
 
+class AssessmentQuestWiseAPIView(generics.ListAPIView):
+    serializer_class = Assessment_addSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        module_id = self.kwargs['module_id']
+        id = self.kwargs['question_no']
+        return Assessment_add.objects.filter(course_enrollment_id=course_enrollment_id, module=module_id, question_no=id)   
 
 class AssessmentUpdateView(generics.RetrieveUpdateAPIView):
     queryset = Assessment_add.objects.all()
@@ -304,7 +354,8 @@ class TotalCountView(APIView):
     def get(self, request):
         student_count = stud_reg.objects.count()
         course_count = Course.objects.count()
-        return Response({'student_count': student_count,'course_count':course_count})  
+        faculty_count = faculty_reg.objects.count()
+        return Response({'student_count': student_count,'course_count':course_count,'faculty_count':faculty_count})  
 
 
 class CourseMaterialsCountAPIView(APIView):
@@ -372,7 +423,8 @@ class CartDetail(generics.ListCreateAPIView):
 
     def get_queryset(self):
         course_enrollment_id = self.kwargs['stud_reg']
-        return CartData.objects.filter(stud_reg=course_enrollment_id)      
+        status = 'Inactive'
+        return CartData.objects.filter(stud_reg=course_enrollment_id, status=status)      
     
     
 
@@ -381,18 +433,40 @@ class CartCountView(generics.GenericAPIView):
 
     def get(self, request, *args, **kwargs):
         course_enrollment_id = self.kwargs['stud_reg']
+        status = 'Inactive'
 
-        cart_count = CartData.objects.filter(stud_reg=course_enrollment_id).count()
+        cart_count = CartData.objects.filter(stud_reg=course_enrollment_id,status =status).count()
         
         return Response({'C_count': cart_count})  
+    
+    
+class PurchasedCourseView(generics.ListCreateAPIView):
+    serializer_class = CartDataSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['stud_reg']
+        status = 'Active'
+        return CartData.objects.filter(stud_reg=course_enrollment_id, status=status)   
+    
+class PurchasedCountView(generics.GenericAPIView):
+    serializer_class = CartDataSerializer
+
+    def get(self, request, *args, **kwargs):
+        course_enrollment_id = self.kwargs['stud_reg']
+        status = 'Active'
+
+        cart_count = CartData.objects.filter(stud_reg=course_enrollment_id,status =status).count()
+        
+        return Response({'purchase_count': cart_count})     
     
 class CartTotalView(generics.GenericAPIView):
     serializer_class = CartDataSerializer
 
     def get(self, request, *args, **kwargs):
         course_enrollment_id = self.kwargs['stud_reg']
+        status = 'Inactive'
 
-        cart_pieces = CartData.objects.filter(stud_reg=course_enrollment_id).aggregate(total_pieces=Sum('price'))
+        cart_pieces = CartData.objects.filter(stud_reg=course_enrollment_id,status = status).aggregate(total_pieces=Sum('price'))
         total_pieces = cart_pieces['total_pieces'] if cart_pieces['total_pieces'] else 0
         
         return Response({'total_pieces': total_pieces})    
@@ -407,9 +481,12 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 class CreateCheckOutSession(APIView):
     def post(self, request, *args, **kwargs):
         prod_id = self.kwargs["pk"]  # Accessing pk from kwargs
+        current_date = datetime.now().date()
         try:
             product = CartData.objects.get(id=prod_id)
-            product.payment_status = 'Success'
+            print('PRODUCT DETAILS',product)
+            product.status = 'Active'
+            product.created_at = current_date
             product.save()
             total_price = CartData.objects.filter(id=prod_id).aggregate(total_price=Sum('price'))['total_price']
             checkout_session = stripe.checkout.Session.create(
@@ -432,9 +509,223 @@ class CreateCheckOutSession(APIView):
         "product_id": product.id,
     },
     mode='payment',
-    success_url=settings.SITE_URL + 'success' + '/' + 'product.course_name',
+    success_url=settings.SITE_URL + 'success' + '/' + product.username,
     cancel_url=settings.SITE_URL + '?canceled=true',
 )
             return redirect(checkout_session.url)
         except Exception as e:
             return Response({'msg': 'something went wrong while creating stripe session', 'error': str(e)}, status=500)
+
+
+
+class WishList_reg(generics.ListCreateAPIView):
+    queryset = WishList.objects.all()
+    serializer_class = WishListSerializer
+    permission_classes = [AllowAny]    
+
+class WishListView(generics.RetrieveAPIView):
+    queryset = WishList.objects.all()
+    serializer_class = WishListSerializer
+    
+class WishListDetail(generics.ListCreateAPIView):
+    serializer_class = WishListSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['stud_reg']
+        status = 0
+        return WishList.objects.filter(stud_reg=course_enrollment_id,wishlist_status=status)         
+
+
+class WishListUpdateView(generics.RetrieveUpdateAPIView):
+    queryset = WishList.objects.all()
+    serializer_class = WishListSerializer
+
+
+class WishListDelete(generics.DestroyAPIView):
+    queryset = WishList.objects.all()
+    serializer_class = WishListSerializer
+    
+
+class completedVedios_Create(generics.ListCreateAPIView):
+    queryset = completedVideos.objects.all()
+    serializer_class = completedVideosSerializer
+    permission_classes = [AllowAny]  
+    
+    
+class WatchedDetail(generics.ListCreateAPIView):
+    serializer_class = completedVideosSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        module = self.kwargs['module']
+        stud_id = self.kwargs['stud_id']
+        video_id =self.kwargs['video_id']
+        status = 1
+        return completedVideos.objects.filter(course_enrollment_id=course_enrollment_id,module=module, stud_id=stud_id,video_id=video_id, status=status)     
+    
+class FinalScore_Create(generics.ListCreateAPIView):
+    queryset = FinalScore.objects.all()
+    serializer_class = FinalScoreSerializer
+    permission_classes = [AllowAny]   
+    
+class AssessmentFound(generics.GenericAPIView):
+    serializer_class = FinalScoreSerializer  # Set the serializer class
+
+    def get(self, request, *args, **kwargs):
+        # Retrieve parameters from URL kwargs
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        module = self.kwargs['module_id']
+        username = self.kwargs['username']
+        status = 1  # Assuming status is always 1
+
+        # Filter FinalScore objects based on parameters
+        queryset = FinalScore.objects.filter(course_enrollment_id=course_enrollment_id,module=module,username=username,status=status).exists()
+        return Response({'assess_found': queryset})
+    
+    
+class EachResultListAPIView(generics.ListAPIView):
+    serializer_class = FinalScoreSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        module_id = self.kwargs['module_id']
+        stud_id = self.kwargs['stud_id']
+        return FinalScore.objects.filter(course_enrollment_id=course_enrollment_id, module=module_id, stud_id=stud_id)       
+    
+       
+
+
+    
+
+class EachAssessmentListAPIView(generics.ListAPIView):
+    serializer_class = AssessmentSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        module_id = self.kwargs['module_id']
+        return Assessment.objects.filter(course_enrollment_id=course_enrollment_id, module=module_id)          
+
+class Course_TopicEachDetail(generics.ListAPIView):
+    serializer_class = Course_TopicSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        module_id = self.kwargs['module']
+        return Course_Topic.objects.filter(course_enrollment_id=course_enrollment_id, module=module_id)     
+    
+    
+class PurchaseFound(generics.GenericAPIView):
+    serializer_class = CartDataSerializer  # Set the serializer class
+
+    def get(self, request, *args, **kwargs):
+        # Retrieve parameters from URL kwargs
+        stud_id = self.kwargs['stud_reg']
+        username = self.kwargs['username']
+        status = 'Active' # Assuming status is always 1
+
+        # Filter FinalScore objects based on parameters
+        queryset = CartData.objects.filter(stud_reg= stud_id,username=username,status=status).exists()
+        return Response({'purchase_found': queryset})   
+    
+    
+class FacultyDetails(generics.RetrieveAPIView):
+    queryset = faculty_reg.objects.all()
+    serializer_class = FacultySerializer
+    lookup_field = 'username'  # Specify the lookup field
+
+    def get_queryset(self):
+        name = self.kwargs.get('username')
+        return self.queryset.filter(username__icontains=name)  
+    
+
+class FacultyAssignDetails(generics.RetrieveAPIView):
+    queryset = Course.objects.all()
+    serializer_class = CourseSerializer
+    lookup_field = 'course_instructor'  # Specify the lookup field
+
+    def get_queryset(self):
+        name = self.kwargs.get('course_instructor')
+        return self.queryset.filter(course_instructor__icontains=name)    
+    
+
+class FacultyAssignStudDetail(generics.ListAPIView):
+    serializer_class = CartDataSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        Status = 'Active'
+        return CartData.objects.filter(course_enrollment_id=course_enrollment_id, status=Status)            
+    
+class FacultyAssignStudCount(generics.ListAPIView):
+    serializer_class = CartDataSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        Status = 'Active'
+        c_count= CartData.objects.filter(course_enrollment_id=course_enrollment_id, status=Status).count()   
+        return Response({'C_count': c_count})
+    
+    
+class FacultyAssignStudCount(generics.GenericAPIView):
+    serializer_class = CartDataSerializer
+
+    def get(self, request, *args, **kwargs):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        status = 'Active'
+
+        cart_count = CartData.objects.filter(course_enrollment_id=course_enrollment_id,status =status).count()
+        
+        return Response({'purchase_count': cart_count})     
+    
+    
+class ScoreDetails(generics.ListAPIView):
+    serializer_class = FinalScoreSerializer
+
+    def get_queryset(self):
+        course_enrollment_id = self.kwargs.get('course_enrollment_id')
+        stud_id = self.kwargs.get('stud_id')
+        queryset = FinalScore.objects.filter(course_enrollment_id=course_enrollment_id,stud_id=stud_id)
+        return queryset 
+    
+    
+class TotalVideoCount(generics.GenericAPIView):
+    serializer_class = Course_MaterialsSerializer
+
+    def get(self, request, *args, **kwargs):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        
+
+        total_count = Course_Materials.objects.filter(course_enrollment_id=course_enrollment_id).count()
+        
+        return Response({'total': total_count}) 
+    
+    
+class TotalWatchedDetail(generics.GenericAPIView):
+    serializer_class = completedVideosSerializer
+
+    def get(self, request, *args, **kwargs):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        stud_id = self.kwargs['stud_id']
+        status = 1
+        video_count = completedVideos.objects.filter(course_enrollment_id=course_enrollment_id, stud_id=stud_id, status=status).count()  
+        return Response({'watch_total': video_count}) 
+    
+    
+class TotalWatchedModuleDetail(generics.GenericAPIView):
+    serializer_class = completedVideosSerializer
+
+    def get(self, request, *args, **kwargs):
+        course_enrollment_id = self.kwargs['course_enrollment_id']
+        stud_id = self.kwargs['stud_id']
+        module = self.kwargs['module']
+        status = 1
+        video_count = completedVideos.objects.filter(course_enrollment_id=course_enrollment_id, stud_id=stud_id,module=module, status=status).count()  
+        return Response({'watch_total': video_count})         
+    
+class NotifyCreate(generics.ListCreateAPIView):
+    queryset = Notify.objects.all()
+    serializer_class = NotifySerializer
+    permission_classes = [AllowAny]                
+
+        
+                 
